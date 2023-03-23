@@ -1,7 +1,6 @@
 package org.zyfra.model;
 
-import lombok.Builder;
-import lombok.Data;
+import lombok.*;
 
 import java.io.File;
 
@@ -9,8 +8,8 @@ import java.io.File;
 @Builder
 public class CSVObject {
 
-    private final File file;
-    private final String[] header;
-    private final String[] firstLineData;
-    private final Long repeatFirstLineDataTimes;
+    private File file;
+    private String[] header;
+    private String[] dataFirstLine;
+    private Long dataFirstLineRepeatTimes;
 }
