@@ -1,6 +1,7 @@
 package org.zyfra.model;
 
-import lombok.*;
+import lombok.Builder;
+import lombok.Data;
 
 import java.io.File;
 

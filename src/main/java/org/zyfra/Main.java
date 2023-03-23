@@ -3,8 +3,6 @@ package org.zyfra;
 import com.opencsv.CSVReader;
 import com.opencsv.CSVWriter;
 import com.opencsv.exceptions.CsvValidationException;
-import lombok.NonNull;
-import lombok.Setter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zyfra.model.CSVObject;
@@ -18,7 +16,6 @@ import java.nio.charset.StandardCharsets;
 /**
  * Класс с точкой входа и алгоритмом
  */
-@Setter
 public class Main {
 
     /**
@@ -60,24 +57,23 @@ public class Main {
      *
      * @see CSVObject
      */
-    public CSVObject initVariables(@NonNull String csvFilePath, String repeatFirstLineTimes) {
-        logger.info("Initialising variables for {} {} times", csvFilePath, repeatFirstLineTimes);
+    public CSVObject initVariables(String csvFilePath, String dataRepeatString) {
+        logger.info("Initialising variables for {} {} times", csvFilePath, dataRepeatString);
         File csvFile = new File(csvFilePath);
         String[] header = readCSVLine(csvFile, 0);
         String[] data = readCSVLine(csvFile, 1);
-        long repeatFirstLineTimesLong = 1L;
+        long dataRepeat = 1L;
 
         try {
-            repeatFirstLineTimesLong = Long.parseLong(repeatFirstLineTimes);
+            dataRepeat = Long.parseLong(dataRepeatString);
         } catch (NumberFormatException nfe) {
             logger.warn("REPEAT_FIRST_LINE_TIMES=1 (by default)");
         }
 
         return CSVObject.builder()
-                .file(csvFile)
                 .header(header)
                 .dataFirstLine(data)
-                .dataFirstLineRepeatTimes(repeatFirstLineTimesLong)
+                .dataFirstLineRepeatTimes(dataRepeat)
                 .build();
     }
 
@@ -88,7 +84,7 @@ public class Main {
      * @param lineIndex индекс с данными (нулевая линия - это header)
      * @return массив из значений в строке
      */
-    public String[] readCSVLine(@NonNull File file, int lineIndex) {
+    public String[] readCSVLine(File file, int lineIndex) {
         try (var fr = new FileReader(file, StandardCharsets.UTF_8);
              var reader = new CSVReader(fr)) {
 
@@ -105,7 +101,7 @@ public class Main {
         return null;
     }
 
-    public void writeToCSVFile(@NonNull CSVObject csvObject) {
+    public void writeToCSVFile(CSVObject csvObject) {
         try (var fw = new FileWriter(csvObject.getFile());
              var writer = new CSVWriter(fw)) {
 
