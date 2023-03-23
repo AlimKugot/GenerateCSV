@@ -1,10 +1,7 @@
 package org.zyfra;
 
-import com.opencsv.CSVReader;
-import com.opencsv.CSVWriter;
+import com.opencsv.*;
 import com.opencsv.exceptions.CsvValidationException;
-import lombok.NonNull;
-import lombok.Setter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zyfra.model.CSVObject;
@@ -18,7 +15,6 @@ import java.nio.charset.StandardCharsets;
 /**
  * Класс с точкой входа и алгоритмом
  */
-@Setter
 public class Main {
 
     /**
@@ -30,13 +26,18 @@ public class Main {
     /**
      * Путь до csv файла
      */
-    public static String csvFilePath = System.getenv("CSV_FILE_PATH");
+//    public static String csvFilePath = System.getenv("CSV_FILE_PATH");
+    public static String csvFilePath = "data/in/in-swingdoor.csv";
+
+    public static String outputFilePath = "data/out/test-data-simple-swingdoor.csv";
+
 
     /**
      * Сколько раз повторяем первую строчку.
      * String переменная парсится потом в Long (2^64-1)
      */
-    public static String repeatFirstLineTimes = System.getenv("REPEAT_FIRST_LINE_TIMES");
+//    public static String repeatFirstLineTimes = System.getenv("REPEAT_FIRST_LINE_TIMES");
+    public static String repeatFirstLineTimes = "50000";
 
     /**
      * Точка входа
@@ -49,7 +50,7 @@ public class Main {
         Main main = new Main();
         CSVObject csvObject = main.initVariables(csvFilePath, repeatFirstLineTimes);
         if (csvObject != null) {
-            main.writeToCSVFile(csvObject);
+            main.writeToCSVFile(csvObject, outputFilePath);
         }
 
         logger.info("Ending");
@@ -60,15 +61,15 @@ public class Main {
      *
      * @see CSVObject
      */
-    public CSVObject initVariables(@NonNull String csvFilePath, String repeatFirstLineTimes) {
-        logger.info("Initialising variables for {} {} times", csvFilePath, repeatFirstLineTimes);
+    public CSVObject initVariables(String csvFilePath, String dataRepeatString) {
+        logger.info("Initialising variables for {} {} times", csvFilePath, dataRepeatString);
         File csvFile = new File(csvFilePath);
         String[] header = readCSVLine(csvFile, 0);
         String[] data = readCSVLine(csvFile, 1);
-        long repeatFirstLineTimesLong = 1L;
+        long dataRepeat = 1L;
 
         try {
-            repeatFirstLineTimesLong = Long.parseLong(repeatFirstLineTimes);
+            dataRepeat = Long.parseLong(dataRepeatString);
         } catch (NumberFormatException nfe) {
             logger.warn("REPEAT_FIRST_LINE_TIMES=1 (by default)");
         }
@@ -77,7 +78,7 @@ public class Main {
                 .file(csvFile)
                 .header(header)
                 .dataFirstLine(data)
-                .dataFirstLineRepeatTimes(repeatFirstLineTimesLong)
+                .dataFirstLineRepeatTimes(dataRepeat)
                 .build();
     }
 
@@ -88,26 +89,33 @@ public class Main {
      * @param lineIndex индекс с данными (нулевая линия - это header)
      * @return массив из значений в строке
      */
-    public String[] readCSVLine(@NonNull File file, int lineIndex) {
+    public String[] readCSVLine(File file, int lineIndex) {
+        CSVParser parser = new CSVParserBuilder()
+                .withSeparator(';')
+                .withIgnoreQuotations(true)
+                .build();
         try (var fr = new FileReader(file, StandardCharsets.UTF_8);
-             var reader = new CSVReader(fr)) {
+             var reader = new CSVReaderBuilder(fr)
+                     .withSkipLines(0)
+                     .withCSVParser(parser)
+                     .build()) {
 
             String[] line = null;
             for (int i = 0; i <= lineIndex; i++) {
-                line = reader.readNext();
+                line = reader.readNextSilently();
             }
             return line;
         } catch (IOException e) {
             logger.error("Error reading csv file {}", file.getAbsolutePath(), e);
-        } catch (CsvValidationException e) {
-            logger.error("CSV format reading error", e);
         }
         return null;
     }
 
-    public void writeToCSVFile(@NonNull CSVObject csvObject) {
-        try (var fw = new FileWriter(csvObject.getFile());
-             var writer = new CSVWriter(fw)) {
+    public void writeToCSVFile(CSVObject csvObject, String outputFilePath) {
+        try (var fw = new FileWriter(outputFilePath);
+             var writer = new CSVWriterBuilder(fw)
+                     .withQuoteChar('\0')
+                     .build()) {
 
             logger.info("starting writing to csv {}", csvObject);
 
@@ -121,7 +129,7 @@ public class Main {
 
             // repeat data
             logger.info("starting adding first line {} times to csv", csvObject.getDataFirstLineRepeatTimes());
-            for (long i = 0; i < csvObject.getDataFirstLineRepeatTimes(); i++) {
+            for (long i = 1; i < csvObject.getDataFirstLineRepeatTimes(); i++) {
                 writer.writeNext(csvObject.getDataFirstLine());
             }
         } catch (IOException e) {
