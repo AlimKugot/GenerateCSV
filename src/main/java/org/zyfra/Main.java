@@ -5,6 +5,7 @@ import com.opencsv.CSVWriter;
 import com.opencsv.exceptions.CsvValidationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.zyfra.model.CSVObject;
 
 import java.io.File;
@@ -16,6 +17,7 @@ import java.nio.charset.StandardCharsets;
 /**
  * Класс с точкой входа и алгоритмом
  */
+@SpringBootApplication
 public class Main {
 
     /**
