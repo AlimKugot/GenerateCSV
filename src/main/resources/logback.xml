@@ -9,11 +9,11 @@
 
     <appender name="FILE"
               class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>.logs/csv-duplicator.log</file>
+        <file>.logs/csv-generator-main.log</file>
         <rollingPolicy
                 class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <!-- daily rollover -->
-            <fileNamePattern>csv-duplicator.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <fileNamePattern>csv-generator-main.%d{yyyy-MM-dd}.log</fileNamePattern>
 
             <!-- Храним файлы логов дней -->
             <maxHistory>10</maxHistory>
