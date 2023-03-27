@@ -27,9 +27,9 @@ public class Main {
      * Путь до csv файла
      */
 //    public static String csvFilePath = System.getenv("CSV_FILE_PATH");
-    public static String csvFilePath = "data/in/in-swingdoor.csv";
+    public static String csvFilePath = "data/in/in-simple-5-swingdoor.csv";
 
-    public static String outputFilePath = "data/out/test-data-simple-swingdoor.csv";
+    public static String outputFilePath = "data/out/test-data-simple-1.csv";
 
 
     /**
@@ -90,20 +90,19 @@ public class Main {
      * @return массив из значений в строке
      */
     public String[] readCSVLine(File file, int lineIndex) {
-        CSVParser parser = new CSVParserBuilder()
-                .withSeparator(';')
-                .withIgnoreQuotations(true)
-                .build();
+
         try (var fr = new FileReader(file, StandardCharsets.UTF_8);
              var reader = new CSVReaderBuilder(fr)
-                     .withSkipLines(0)
-                     .withCSVParser(parser)
+                     .withCSVParser(new CSVParserBuilder()
+                             .withSeparator(';')
+                             .build())
                      .build()) {
 
             String[] line = null;
             for (int i = 0; i <= lineIndex; i++) {
                 line = reader.readNextSilently();
             }
+
             return line;
         } catch (IOException e) {
             logger.error("Error reading csv file {}", file.getAbsolutePath(), e);
@@ -113,9 +112,11 @@ public class Main {
 
     public void writeToCSVFile(CSVObject csvObject, String outputFilePath) {
         try (var fw = new FileWriter(outputFilePath);
-             var writer = new CSVWriterBuilder(fw)
-                     .withQuoteChar('\0')
-                     .build()) {
+             var writer = new CSVWriter(fw,
+                     ';',
+                     CSVWriter.NO_QUOTE_CHARACTER,
+                     CSVWriter.NO_ESCAPE_CHARACTER,
+                     CSVWriter.DEFAULT_LINE_END)) {
 
             logger.info("starting writing to csv {}", csvObject);
 
@@ -123,14 +124,22 @@ public class Main {
             writer.writeNext(csvObject.getHeader());
             logger.info("added header");
 
-            // add data to csv
-            writer.writeNext(csvObject.getDataFirstLine());
-            logger.info("added data");
-
             // repeat data
+            String[] line = csvObject.getDataFirstLine();
+            line[22] = line[22].substring(2, line[22].length() - 2);
+            line[28] = line[28].substring(2, line[28].length() - 2);
+
+            line[22] = "\"[\"\"" + line[22] + "\"\"]\"";
+            line[28] = "\"[\"\"" + line[28] + "\"\"]\"";
+
+
             logger.info("starting adding first line {} times to csv", csvObject.getDataFirstLineRepeatTimes());
-            for (long i = 1; i < csvObject.getDataFirstLineRepeatTimes(); i++) {
-                writer.writeNext(csvObject.getDataFirstLine());
+            for (long i = 1; i <= csvObject.getDataFirstLineRepeatTimes(); i++) {
+                // Name
+                line[0] = line[0].replaceAll("\\d+$", String.valueOf(i));
+                // Name in source
+                line[19] = line[19].replaceAll("\\d+$", String.valueOf(i));
+                writer.writeNext(line);
             }
         } catch (IOException e) {
             logger.error("Failed to write to file {}", csvObject.getFile(), e);

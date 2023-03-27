@@ -44,7 +44,7 @@ public class MainTest {
 
     @Test
     void readCSVLine_ReadHeader() {
-        File testReadFile = new File("src/test/resources/in-swingdoor.csv");
+        File testReadFile = new File("src/test/resources/in-simple-5-swingdoor.csv");
 
         String[] headerExpected = {"_Name;_Select(x);_ValueType;_Delete(x);_NewName;Accuracy;Archive;CalcAggregates;CalculationAlgorithmExpression;Compression;CompressionDeviation;CompressionTimeDeadBand;CompressionTimespan;CompressionType;Convers;Description;DictId;DictSource;EngUnits;Hi;InstrumentTag;Interpolation;Output;PointSource;Reception;SaveAddTs;SaveQuality;Scan;ScanClass;SecurityGroups;SourceCompression;SourceCompressionDeviation;SourceCompressionTimeDeadBand;SourceCompressionTimespan;SourceCompressionType;SourceTag;Span;SquareRoot;TTL;TotalCode;Zero"};
         String[] headerActual = main.readCSVLine(testReadFile, 0);
