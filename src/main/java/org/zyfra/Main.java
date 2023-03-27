@@ -29,7 +29,7 @@ public class Main {
 //    public static String csvFilePath = System.getenv("CSV_FILE_PATH");
     public static String csvFilePath = "data/in/in-simple-5-swingdoor.csv";
 
-    public static String outputFilePath = "data/out/test-data-simple-1.csv";
+    public static String outputFilePath = "data/out/test-data-simple-5-swingdoor.csv";
 
 
     /**
