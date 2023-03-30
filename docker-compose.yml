@@ -1,0 +1,14 @@
+version: "3"
+services:
+  csv-app:
+    image: alimkugot/csv-generator:1.0
+    container_name: csv-generator-container
+    volumes:
+      - ./data:/app/data
+    environment:
+      # откуда берутся данные (путь до вашего csv файла)
+      INPUT_CSV_FILE: "data/in/in-simple-1.csv"
+      # куда сохраняем результат
+      OUTPUT_CSV_FILE: "data/out/test-data-simple-1.csv"
+      # сколько раз повторяем строку
+      REPEAT_CSV_LINE_TIMES: "50000"
