@@ -1,12 +1,9 @@
 package org.zyfra;
 
-import com.opencsv.CSVReader;
-import com.opencsv.CSVWriter;
-import com.opencsv.exceptions.CsvValidationException;
-import lombok.NonNull;
-import lombok.Setter;
+import com.opencsv.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.zyfra.exception.LocalException;
 import org.zyfra.model.CSVObject;
 
 import java.io.File;
@@ -18,7 +15,6 @@ import java.nio.charset.StandardCharsets;
 /**
  * Класс с точкой входа и алгоритмом
  */
-@Setter
 public class Main {
 
     /**
@@ -28,15 +24,21 @@ public class Main {
 
 
     /**
-     * Путь до csv файла
+     * Откуда берутся данные из csv файла
      */
-    public static String csvFilePath = System.getenv("CSV_FILE_PATH");
+    public static String csvInputFilePath = System.getenv("INPUT_CSV_FILE");
+
+    /**
+     * Куда сохраняется вывод работы программы
+     */
+    public static String csvOutputFilePath = System.getenv("OUTPUT_CSV_FILE");
+
 
     /**
      * Сколько раз повторяем первую строчку.
      * String переменная парсится потом в Long (2^64-1)
      */
-    public static String repeatFirstLineTimes = System.getenv("REPEAT_FIRST_LINE_TIMES");
+    public static String repeatFirstLineTimes = System.getenv("REPEAT_CSV_LINE_TIMES");
 
     /**
      * Точка входа
@@ -45,14 +47,17 @@ public class Main {
      */
     public static void main(String[] args) {
         logger.info("Starting");
+        try {
+            Main main = new Main();
+            CSVObject csvObject = main.initCSVVariables(csvInputFilePath, repeatFirstLineTimes);
+            if (csvObject != null) {
+                main.writeToCSVFile(csvObject, csvOutputFilePath);
+            }
 
-        Main main = new Main();
-        CSVObject csvObject = main.initVariables(csvFilePath, repeatFirstLineTimes);
-        if (csvObject != null) {
-            main.writeToCSVFile(csvObject);
+            logger.info("Ending");
+        } catch (LocalException le) {
+            logger.error("LocalException", le);
         }
-
-        logger.info("Ending");
     }
 
     /**
@@ -60,24 +65,28 @@ public class Main {
      *
      * @see CSVObject
      */
-    public CSVObject initVariables(@NonNull String csvFilePath, String repeatFirstLineTimes) {
-        logger.info("Initialising variables for {} {} times", csvFilePath, repeatFirstLineTimes);
-        File csvFile = new File(csvFilePath);
+    public CSVObject initCSVVariables(String csvInputFilePath, String dataRepeatString) {
+        logger.info("Initialising variables for {} {} times", csvInputFilePath, dataRepeatString);
+        if (csvInputFilePath == null || csvInputFilePath.isEmpty()) {
+            throw new LocalException("CsvInputPath is null or empty");
+        }
+
+        File csvFile = new File(csvInputFilePath);
         String[] header = readCSVLine(csvFile, 0);
         String[] data = readCSVLine(csvFile, 1);
-        long repeatFirstLineTimesLong = 1L;
+        long dataRepeat;
 
         try {
-            repeatFirstLineTimesLong = Long.parseLong(repeatFirstLineTimes);
+            dataRepeat = Long.parseLong(dataRepeatString);
         } catch (NumberFormatException nfe) {
-            logger.warn("REPEAT_FIRST_LINE_TIMES=1 (by default)");
+            throw new LocalException("incorrect number format for data repeat: " + dataRepeatString);
         }
 
         return CSVObject.builder()
                 .file(csvFile)
                 .header(header)
                 .dataFirstLine(data)
-                .dataFirstLineRepeatTimes(repeatFirstLineTimesLong)
+                .dataFirstLineRepeatTimes(dataRepeat)
                 .build();
     }
 
@@ -88,26 +97,38 @@ public class Main {
      * @param lineIndex индекс с данными (нулевая линия - это header)
      * @return массив из значений в строке
      */
-    public String[] readCSVLine(@NonNull File file, int lineIndex) {
+    public String[] readCSVLine(File file, int lineIndex) {
+
         try (var fr = new FileReader(file, StandardCharsets.UTF_8);
-             var reader = new CSVReader(fr)) {
+             var reader = new CSVReaderBuilder(fr)
+                     .withCSVParser(new CSVParserBuilder()
+                             .withSeparator(';')
+                             .build())
+                     .build()) {
 
             String[] line = null;
             for (int i = 0; i <= lineIndex; i++) {
-                line = reader.readNext();
+                line = reader.readNextSilently();
             }
+
             return line;
         } catch (IOException e) {
-            logger.error("Error reading csv file {}", file.getAbsolutePath(), e);
-        } catch (CsvValidationException e) {
-            logger.error("CSV format reading error", e);
+            throw new LocalException("Error reading csv file " + file.getAbsolutePath());
         }
-        return null;
     }
 
-    public void writeToCSVFile(@NonNull CSVObject csvObject) {
-        try (var fw = new FileWriter(csvObject.getFile());
-             var writer = new CSVWriter(fw)) {
+    /**
+     * Выводит результат работы в указанный файл
+     * @param csvObject ооп объект с данными из csv
+     * @param outputFilePath файл, где будет лежать вывод
+     */
+    public void writeToCSVFile(CSVObject csvObject, String outputFilePath) {
+        try (var fw = new FileWriter(outputFilePath);
+             var writer = new CSVWriter(fw,
+                     ';',
+                     CSVWriter.NO_QUOTE_CHARACTER,
+                     CSVWriter.NO_ESCAPE_CHARACTER,
+                     CSVWriter.DEFAULT_LINE_END)) {
 
             logger.info("starting writing to csv {}", csvObject);
 
@@ -115,14 +136,22 @@ public class Main {
             writer.writeNext(csvObject.getHeader());
             logger.info("added header");
 
-            // add data to csv
-            writer.writeNext(csvObject.getDataFirstLine());
-            logger.info("added data");
-
             // repeat data
+            String[] line = csvObject.getDataFirstLine();
+            // convert to "[""data""]"
+            // todo: убрать этот костыль
+            line[22] = line[22].substring(2, line[22].length() - 2);
+            line[28] = line[28].substring(2, line[28].length() - 2);
+            line[22] = "\"[\"\"" + line[22] + "\"\"]\"";
+            line[28] = "\"[\"\"" + line[28] + "\"\"]\"";
+
             logger.info("starting adding first line {} times to csv", csvObject.getDataFirstLineRepeatTimes());
-            for (long i = 0; i < csvObject.getDataFirstLineRepeatTimes(); i++) {
-                writer.writeNext(csvObject.getDataFirstLine());
+            for (long i = 1; i <= csvObject.getDataFirstLineRepeatTimes(); i++) {
+                // Name
+                line[0] = line[0].replaceAll("\\d+$", String.valueOf(i));
+                // Name in source
+                line[19] = line[19].replaceAll("\\d+$", String.valueOf(i));
+                writer.writeNext(line);
             }
         } catch (IOException e) {
             logger.error("Failed to write to file {}", csvObject.getFile(), e);
